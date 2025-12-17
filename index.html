@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DompetKu - Catat Keuangan</title>
+    <style>
+      :root {
+        --primary: #2563eb;
+        --success: #16a34a;
+        --danger: #dc2626;
+        --bg: #f3f4f6;
+        --card: #ffffff;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--bg);
+        margin: 0;
+        padding: 20px;
+        color: #333;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* Header Cards */
+      .balance-card {
+        background: var(--primary);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      .balance-card h2 {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+      .balance-card h1 {
+        margin: 10px 0 0;
+        font-size: 32px;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .card {
+        background: var(--card);
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        text-align: center;
+      }
+      .money-plus {
+        color: var(--success);
+        font-weight: bold;
+        font-size: 18px;
+      }
+      .money-minus {
+        color: var(--danger);
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      /* Form */
+      .input-group {
+        background: var(--card);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      h3 {
+        margin-top: 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+      }
+
+      .form-control {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        box-sizing: border-box;
+      }
+      .btn {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        transition: 0.2s;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+      .btn-primary:hover {
+        background: #1d4ed8;
+      }
+      .btn-danger {
+        background: #fee2e2;
+        color: var(--danger);
+        margin-top: 5px;
+        font-size: 12px;
+        padding: 8px;
+      }
+
+      /* Transaction List */
+      .history-list {
+        list-style-type: none;
+        padding: 0;
+      }
+      .history-item {
+        background: var(--card);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        position: relative;
+        border-left: 5px solid transparent;
+      }
+      .history-item.plus {
+        border-left-color: var(--success);
+      }
+      .history-item.minus {
+        border-left-color: var(--danger);
+      }
+
+      .item-details {
+        flex-grow: 1;
+        margin-left: 10px;
+      }
+      .item-cat {
+        font-size: 12px;
+        color: #666;
+        background: #eee;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .delete-btn {
+        background: transparent;
+        border: none;
+        color: #999;
+        font-size: 20px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+      .delete-btn:hover {
+        color: var(--danger);
+      }
+
+      /* Tools */
+      .tools {
+        margin-top: 30px;
+        text-align: center;
+        font-size: 12px;
+      }
+      .tools button {
+        margin: 0 5px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="balance-card">
+        <h2>Sisa Saldo</h2>
+        <h1 id="balance">Rp 0</h1>
+      </div>
+
+      <div class="summary-grid">
+        <div class="card">
+          <h4>Pemasukan</h4>
+          <p id="money-plus" class="money-plus">+Rp 0</p>
+        </div>
+        <div class="card">
+          <h4>Pengeluaran</h4>
+          <p id="money-minus" class="money-minus">-Rp 0</p>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <h3>Tambah Transaksi</h3>
+        <form id="form">
+          <select id="type" class="form-control">
+            <option value="expense">Pengeluaran (-)</option>
+            <option value="income">Pemasukan (+)</option>
+          </select>
+
+          <input type="text" id="text" class="form-control" placeholder="Nama Transaksi (cth: Gaji, Kopi)" required />
+
+          <input list="categories" id="category" class="form-control" placeholder="Kategori" required />
+          <datalist id="categories">
+            <option value="Gaji"></option>
+            <option value="Bonus"></option>
+            <option value="Side Hustle"></option>
+            <option value="Groceries"></option>
+            <option value="Utilities"></option>
+            <option value="Jajan"></option>
+            <option value="Kopi"></option>
+            <option value="Transport"></option>
+          </datalist>
+
+          <input type="number" id="amount" class="form-control" placeholder="Jumlah (Rp)" required />
+          <button class="btn btn-primary">Tambah Transaksi</button>
+        </form>
+      </div>
+
+      <h3>Riwayat</h3>
+      <ul id="list" class="history-list"></ul>
+
+      <div class="tools">
+        <p>Data tersimpan otomatis di browser ini.</p>
+        <button onclick="downloadData()">Download Backup (JSON)</button>
+        <button onclick="document.getElementById('file-input').click()">Restore Data</button>
+        <input type="file" id="file-input" style="display: none" onchange="loadData(this)" />
+      </div>
+    </div>
+
+    <script>
+      const balance = document.getElementById("balance");
+      const money_plus = document.getElementById("money-plus");
+      const money_minus = document.getElementById("money-minus");
+      const list = document.getElementById("list");
+      const form = document.getElementById("form");
+      const text = document.getElementById("text");
+      const amount = document.getElementById("amount");
+      const type = document.getElementById("type");
+      const category = document.getElementById("category");
+
+      // Mengambil data dari LocalStorage
+      const localStorageTransactions = JSON.parse(localStorage.getItem("transactions"));
+      let transactions = localStorage.getItem("transactions") !== null ? localStorageTransactions : [];
+
+      // Fungsi menambah transaksi
+      function addTransaction(e) {
+        e.preventDefault();
+
+        if (text.value.trim() === "" || amount.value.trim() === "") {
+          alert("Mohon isi nama dan jumlah uang");
+          return;
+        }
+
+        const transaction = {
+          id: generateID(),
+          text: text.value,
+          amount: type.value === "expense" ? -Math.abs(amount.value) : Math.abs(amount.value),
+          category: category.value,
+          date: new Date().toLocaleDateString("id-ID"),
+        };
+
+        transactions.push(transaction);
+        addTransactionDOM(transaction);
+        updateValues();
+        updateLocalStorage();
+
+        text.value = "";
+        amount.value = "";
+        category.value = "";
+      }
+
+      // Generate ID acak
+      function generateID() {
+        return Math.floor(Math.random() * 100000000);
+      }
+
+      // Menambah transaksi ke DOM (Tampilan)
+      function addTransactionDOM(transaction) {
+        const sign = transaction.amount < 0 ? "-" : "+";
+        const item = document.createElement("li");
+
+        item.classList.add("history-item");
+        item.classList.add(transaction.amount < 0 ? "minus" : "plus");
+
+        item.innerHTML = `
+            <div>
+                <strong>${transaction.text}</strong> <span class="item-cat">${transaction.category}</span>
+                <br><small style="color:#888">${transaction.date}</small>
+            </div>
+            <span>${sign}${formatRupiah(Math.abs(transaction.amount))}</span>
+            <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>
+        `;
+
+        list.appendChild(item);
+      }
+
+      // Update total saldo, pemasukan, pengeluaran
+      function updateValues() {
+        const amounts = transactions.map((transaction) => transaction.amount);
+
+        const total = amounts.reduce((acc, item) => (acc += item), 0);
+
+        const income = amounts.filter((item) => item > 0).reduce((acc, item) => (acc += item), 0);
+
+        const expense = amounts.filter((item) => item < 0).reduce((acc, item) => (acc += item), 0) * -1;
+
+        balance.innerText = `${formatRupiah(total)}`;
+        money_plus.innerText = `+${formatRupiah(income)}`;
+        money_minus.innerText = `-${formatRupiah(expense)}`;
+      }
+
+      // Hapus transaksi
+      function removeTransaction(id) {
+        transactions = transactions.filter((transaction) => transaction.id !== id);
+        updateLocalStorage();
+        init();
+      }
+
+      // Update Local Storage
+      function updateLocalStorage() {
+        localStorage.setItem("transactions", JSON.stringify(transactions));
+      }
+
+      // Format Rupiah
+      function formatRupiah(number) {
+        return new Intl.NumberFormat("id-ID", {
+          style: "currency",
+          currency: "IDR",
+          minimumFractionDigits: 0,
+        }).format(number);
+      }
+
+      // Backup & Restore
+      function downloadData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
+        const downloadAnchorNode = document.createElement("a");
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "keuangan_backup.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+      }
+
+      function loadData(input) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const content = e.target.result;
+          try {
+            transactions = JSON.parse(content);
+            updateLocalStorage();
+            init();
+            alert("Data berhasil dipulihkan!");
+          } catch (err) {
+            alert("File error, pastikan file JSON benar.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      // Inisialisasi app
+      function init() {
+        list.innerHTML = "";
+        transactions.forEach(addTransactionDOM);
+        updateValues();
+      }
+
+      init();
+      form.addEventListener("submit", addTransaction);
+    </script>
+  </body>
+</html>
