@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DompetKu - Login</title>
+    <title>DompetKu - Joint Account</title>
     <style>
       :root {
         --primary: #2563eb;
@@ -20,7 +20,7 @@
         color: #333;
       }
 
-      /* --- LOGIN SCREEN STYLE --- */
+      /* LOGIN */
       #login-page {
         position: fixed;
         top: 0;
@@ -42,10 +42,6 @@
         text-align: center;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
       }
-      .login-box h2 {
-        margin-top: 0;
-        color: var(--primary);
-      }
       .login-box input {
         width: 100%;
         padding: 12px;
@@ -57,14 +53,13 @@
         box-sizing: border-box;
       }
 
-      /* --- DASHBOARD STYLE --- */
+      /* APP */
       #app-page {
         display: none;
         padding: 20px;
         max-width: 600px;
         margin: 0 auto;
       }
-
       #loading {
         display: none;
         position: fixed;
@@ -79,6 +74,14 @@
         font-weight: bold;
       }
 
+      .header-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        color: #666;
+        font-size: 14px;
+      }
       .balance-card {
         background: var(--primary);
         color: white;
@@ -121,12 +124,11 @@
         border-radius: 10px;
         margin-bottom: 20px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        border: 1px solid transparent;
       }
       .input-group.editing {
-        border-color: var(--primary);
+        border: 2px solid var(--primary);
         background: #eff6ff;
-      } /* Style saat mode edit */
+      }
 
       .form-row {
         display: grid;
@@ -153,14 +155,11 @@
         color: white;
         font-size: 16px;
       }
-      .btn:hover {
-        background: #1d4ed8;
-      }
       .btn-cancel {
         background: #94a3b8;
         margin-top: 10px;
         display: none;
-      } /* Tombol batal edit */
+      }
 
       .history-list {
         list-style: none;
@@ -188,10 +187,12 @@
         display: flex;
         gap: 5px;
         margin-left: 10px;
+        margin-top: 5px;
+        justify-content: flex-end;
       }
       .btn-mini {
-        padding: 5px 10px;
-        font-size: 12px;
+        padding: 4px 8px;
+        font-size: 11px;
         border-radius: 4px;
         border: none;
         cursor: pointer;
@@ -204,27 +205,25 @@
         background: var(--danger);
       }
 
-      .logout-btn {
-        background: none;
-        border: 1px solid white;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 4px;
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        cursor: pointer;
-        font-size: 12px;
+      /* Badge User */
+      .user-badge {
+        font-size: 10px;
+        background: #e0e7ff;
+        color: var(--primary);
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 5px;
+        font-weight: bold;
       }
     </style>
   </head>
   <body>
     <div id="login-page">
       <div class="login-box">
-        <h2>DompetKu</h2>
-        <p>Masukkan PIN Keamanan</p>
+        <h2>Dompet Bersama</h2>
+        <p>Masukkan PIN Kamu</p>
         <form id="login-form">
-          <input type="password" id="login-pin" placeholder="PIN (Default: 1234)" pattern="[0-9]*" inputmode="numeric" required />
+          <input type="password" id="login-pin" placeholder="PIN" pattern="[0-9]*" inputmode="numeric" required />
           <button type="submit" class="btn">Masuk</button>
         </form>
       </div>
@@ -233,8 +232,12 @@
     <div id="app-page">
       <div id="loading">Memproses Data...</div>
 
+      <div class="header-info">
+        <span id="welcome-msg">Halo, User</span>
+        <a href="#" onclick="logout()" style="color: red; text-decoration: none">Logout</a>
+      </div>
+
       <div class="balance-card">
-        <button class="logout-btn" onclick="logout()">Logout</button>
         <h2>Sisa Saldo</h2>
         <h1 id="balance">Rp 0</h1>
       </div>
@@ -254,6 +257,7 @@
         <h3 id="form-title">Tambah Transaksi</h3>
         <form id="form">
           <input type="hidden" id="edit-id" />
+
           <div class="form-row">
             <input type="date" id="date" class="form-control" required />
             <select id="type" class="form-control">
@@ -262,15 +266,14 @@
             </select>
           </div>
 
-          <input type="text" id="text" class="form-control" placeholder="Keterangan (cth: Nasi Padang)" required />
+          <input type="text" id="text" class="form-control" placeholder="Keterangan" required />
           <input list="categories" id="category" class="form-control" placeholder="Kategori" required />
           <datalist id="categories">
             <option value="Gaji"></option>
             <option value="Bonus"></option>
-            <option value="Makan"></option>
-            <option value="Transport"></option>
-            <option value="Utilities"></option>
-            <option value="Belanja"></option>
+            <option value="Belanja Bulanan"></option>
+            <option value="Jajan"></option>
+            <option value="Listrik/Air"></option>
           </datalist>
 
           <input type="number" id="amount" class="form-control" placeholder="Jumlah (Rp)" required />
@@ -285,18 +288,23 @@
     </div>
 
     <script>
-      // --- GANTI DENGAN URL BARU SETELAH DEPLOY ---
+      // --- GANTI URL INI ---
       const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkEam74ZMFuskgfq9nzEkn3imJfPRQpV38SleairvjbKO_W28iVkJ8tS8G8fdwQ2Ze7Q/exec";
+
+      // --- DATABASE USER & PIN (GANTI DI SINI) ---
+      const USER_DB = {
+        1234: "Suami",
+        5678: "Istri",
+      };
       // -------------------------------------------
 
-      const MY_PIN = "1234"; // GANTI PIN DI SINI
-
-      // --- LOGIC LOGIN ---
+      // Cek Login
       function checkLogin() {
-        const isLoggedIn = localStorage.getItem("isLoggedIn");
-        if (isLoggedIn === "true") {
+        const currentUser = localStorage.getItem("currentUser");
+        if (currentUser) {
           document.getElementById("login-page").style.display = "none";
           document.getElementById("app-page").style.display = "block";
+          document.getElementById("welcome-msg").innerText = "Halo, " + currentUser;
           fetchData();
         }
       }
@@ -304,27 +312,30 @@
       document.getElementById("login-form").addEventListener("submit", function (e) {
         e.preventDefault();
         const inputPin = document.getElementById("login-pin").value;
-        if (inputPin === MY_PIN) {
-          localStorage.setItem("isLoggedIn", "true");
+
+        // Cek apakah PIN ada di database
+        if (USER_DB[inputPin]) {
+          const userName = USER_DB[inputPin];
+          localStorage.setItem("currentUser", userName); // Simpan nama user
           checkLogin();
         } else {
-          alert("PIN Salah!");
+          alert("PIN Tidak Terdaftar!");
           document.getElementById("login-pin").value = "";
         }
       });
 
       function logout() {
-        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("currentUser");
         location.reload();
       }
 
-      // --- LOGIC APLIKASI ---
+      // Logic Aplikasi
       const form = document.getElementById("form");
       const loading = document.getElementById("loading");
-      let isEditing = false; // Status apakah sedang mode edit atau tidak
+      let isEditing = false;
 
       document.getElementById("date").valueAsDate = new Date();
-      window.onload = checkLogin; // Cek login saat web dibuka
+      window.onload = checkLogin;
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
@@ -332,19 +343,17 @@
         const type = document.getElementById("type").value;
         const amountVal = document.getElementById("amount").value;
         const editId = document.getElementById("edit-id").value;
-
-        // Tentukan ini Edit atau Tambah Baru
-        const actionType = isEditing ? "edit" : "add";
-        const idToSend = isEditing ? editId : new Date().getTime(); // Kalau edit pakai ID lama, kalau baru bikin ID baru
+        const currentUser = localStorage.getItem("currentUser"); // Ambil user yg sedang login
 
         const data = {
-          action: actionType,
-          id: idToSend,
+          action: isEditing ? "edit" : "add",
+          id: isEditing ? editId : new Date().getTime(),
           date: document.getElementById("date").value,
           type: type,
           text: document.getElementById("text").value,
           category: document.getElementById("category").value,
           amount: type === "expense" ? -Math.abs(amountVal) : Math.abs(amountVal),
+          user: currentUser, // Kirim nama user ke Google Sheet
         };
 
         sendData(data);
@@ -360,10 +369,9 @@
           .then((response) => {
             loading.style.display = "none";
             if (response.result === "success") {
-              alert(isEditing ? "Data berhasil diupdate!" : "Data berhasil disimpan!");
-              if (isEditing) cancelEdit(); // Keluar mode edit
+              alert("Berhasil!");
+              if (isEditing) cancelEdit();
               else form.reset();
-
               document.getElementById("date").valueAsDate = new Date();
               fetchData();
             } else {
@@ -386,47 +394,34 @@
           });
       }
 
-      // Fungsi Saat Tombol Edit Ditekan
-      window.startEdit = function (id, date, text, category, amount, type) {
+      window.startEdit = function (id, date, text, category, amount) {
         isEditing = true;
-
-        // Scroll ke form
         document.getElementById("input-card").scrollIntoView({ behavior: "smooth" });
-
-        // Ubah tampilan form
         document.getElementById("input-card").classList.add("editing");
         document.getElementById("form-title").innerText = "Edit Transaksi";
         document.getElementById("submit-btn").innerText = "Update Data";
         document.getElementById("cancel-btn").style.display = "block";
 
-        // Isi form dengan data lama
         document.getElementById("edit-id").value = id;
-
-        // Format tanggal dari Google Sheet mungkin perlu disesuaikan agar masuk ke input date
-        // Asumsi format di sheet string standar YYYY-MM-DD. Jika beda mungkin perlu parsing.
         document.getElementById("date").value = date.split("T")[0];
-
         document.getElementById("text").value = text;
         document.getElementById("category").value = category;
         document.getElementById("amount").value = Math.abs(amount);
         document.getElementById("type").value = amount < 0 ? "expense" : "income";
       };
 
-      // Fungsi Batal Edit
       window.cancelEdit = function () {
         isEditing = false;
         form.reset();
         document.getElementById("date").valueAsDate = new Date();
-
         document.getElementById("input-card").classList.remove("editing");
         document.getElementById("form-title").innerText = "Tambah Transaksi";
         document.getElementById("submit-btn").innerText = "Simpan";
         document.getElementById("cancel-btn").style.display = "none";
       };
 
-      // Fungsi Delete
       window.deleteItem = function (id) {
-        if (confirm("Yakin ingin menghapus data ini?")) {
+        if (confirm("Hapus data ini?")) {
           sendData({ action: "delete", id: id });
         }
       };
@@ -458,15 +453,19 @@
             item.classList.add("history-item");
             item.classList.add(t.amount < 0 ? "minus" : "plus");
 
-            // Kita kirim parameter ke fungsi startEdit()
-            // Perhatikan tanda kutipnya agar tidak error saat render HTML
             const safeText = t.text.replace(/'/g, "\\'");
             const safeCat = t.category.replace(/'/g, "\\'");
 
+            // Tampilkan User jika ada datanya
+            const userBadge = t.user ? `<span class="user-badge">${t.user}</span>` : "";
+
             item.innerHTML = `
-                <div class="item-details" style="flex-grow:1">
-                    <strong>${t.text}</strong> <span class="item-cat">${t.category}</span>
-                    <small>${t.date.split("T")[0]}</small>
+                <div style="flex-grow:1">
+                    <div style="display:flex; align-items:center">
+                        <strong>${t.text}</strong> ${userBadge}
+                    </div>
+                    <span class="item-cat">${t.category}</span>
+                    <small style="color:#888">${t.date.split("T")[0]}</small>
                 </div>
                 <div style="text-align:right">
                     <span>${sign}${formatRupiah(Math.abs(t.amount))}</span>
