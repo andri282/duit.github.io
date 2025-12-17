@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DompetKu - Cloud Sync</title>
+    <title>DompetKu - Simple Cloud</title>
     <style>
       :root {
         --primary: #2563eb;
@@ -24,7 +24,6 @@
         margin: 0 auto;
       }
 
-      /* Loading Overlay */
       #loading {
         display: none;
         position: fixed;
@@ -39,7 +38,6 @@
         font-weight: bold;
       }
 
-      /* Kartu Saldo */
       .balance-card {
         background: var(--primary);
         color: white;
@@ -75,7 +73,6 @@
         font-weight: bold;
       }
 
-      /* Form Input */
       .input-group {
         background: var(--card);
         padding: 20px;
@@ -97,15 +94,6 @@
         box-sizing: border-box;
       }
 
-      /* PIN Input */
-      .pin-input {
-        border: 2px solid var(--primary);
-        background: #eef2ff;
-        font-weight: bold;
-        letter-spacing: 2px;
-        text-align: center;
-      }
-
       .btn {
         width: 100%;
         padding: 12px;
@@ -120,7 +108,6 @@
         background: #1d4ed8;
       }
 
-      /* List Transaksi */
       .history-list {
         list-style: none;
         padding: 0;
@@ -156,13 +143,12 @@
     </style>
   </head>
   <body>
-    <div id="loading">Sedang Sinkronisasi ke Google Sheet...</div>
+    <div id="loading">Sinkronisasi Data...</div>
 
     <div class="container">
       <div class="balance-card">
         <h2>Sisa Saldo</h2>
         <h1 id="balance">Rp 0</h1>
-        <small style="opacity: 0.8">Data tersimpan di Google Sheet</small>
       </div>
 
       <div class="summary-grid">
@@ -177,10 +163,8 @@
       </div>
 
       <div class="input-group">
-        <h3>Tambah Transaksi Baru</h3>
+        <h3>Tambah Transaksi</h3>
         <form id="form">
-          <input type="password" id="pin" class="form-control pin-input" placeholder="Masukkan PIN Rahasia" required />
-
           <div class="form-row">
             <input type="date" id="date" class="form-control" required />
             <select id="type" class="form-control">
@@ -206,52 +190,42 @@
 
           <input type="number" id="amount" class="form-control" placeholder="Jumlah (Rp)" required />
 
-          <button class="btn">Simpan ke Cloud</button>
+          <button class="btn">Simpan</button>
         </form>
       </div>
 
-      <h3>Riwayat Terakhir</h3>
+      <h3>Riwayat</h3>
       <ul id="list" class="history-list"></ul>
     </div>
 
     <script>
-      // --- GANTI URL INI DENGAN URL DEPLOYMENT GOOGLE SCRIPT KAMU ---
+      // --- PASTE URL SCRIPT GOOGLE KAMU DI SINI ---
       const SCRIPT_URL = "https://script.google.com/a/macros/student.uns.ac.id/s/AKfycbwkEam74ZMFuskgfq9nzEkn3imJfPRQpV38SleairvjbKO_W28iVkJ8tS8G8fdwQ2Ze7Q/exec";
-      // -------------------------------------------------------------
+      // -------------------------------------------
 
       const form = document.getElementById("form");
       const loading = document.getElementById("loading");
 
-      // Set default date ke hari ini
       document.getElementById("date").valueAsDate = new Date();
 
-      // Simpan PIN di browser biar ga ngetik ulang terus (Opsional)
-      const savedPin = localStorage.getItem("user_pin");
-      if (savedPin) document.getElementById("pin").value = savedPin;
-
-      // Load Data saat aplikasi dibuka
+      // Langsung ambil data saat web dibuka
       window.onload = function () {
-        if (savedPin) fetchData(savedPin);
+        fetchData();
       };
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
-        const pin = document.getElementById("pin").value;
-        localStorage.setItem("user_pin", pin); // Ingat PIN di browser
 
         const type = document.getElementById("type").value;
         const amountVal = document.getElementById("amount").value;
 
-        // Data yang akan dikirim
         const data = {
           action: "add",
-          pin: pin,
           id: new Date().getTime(),
           date: document.getElementById("date").value,
           type: type,
           text: document.getElementById("text").value,
           category: document.getElementById("category").value,
-          // Jika expense, jadikan negatif
           amount: type === "expense" ? -Math.abs(amountVal) : Math.abs(amountVal),
         };
 
@@ -260,43 +234,34 @@
 
       function sendData(data) {
         loading.style.display = "block";
-
         fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "no-cors", // Penting untuk Google Script
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         })
           .then(() => {
-            // Karena mode 'no-cors', kita tidak bisa baca respons JSON detail
-            // Jadi kita asumsikan berhasil, lalu refresh data
-            alert("Data terkirim! Sedang mengambil data terbaru...");
+            alert("Berhasil disimpan!");
             form.reset();
             document.getElementById("date").valueAsDate = new Date();
-            document.getElementById("pin").value = localStorage.getItem("user_pin");
-            fetchData(data.pin); // Refresh tampilan
+            fetchData(); // Refresh list otomatis
           })
           .catch((err) => {
-            alert("Error koneksi");
+            alert("Gagal koneksi ke Google Sheet");
             loading.style.display = "none";
           });
       }
 
-      function fetchData(pin) {
+      function fetchData() {
         loading.style.display = "block";
-
-        // Trik fetch POST dengan action="get" agar body bisa bawa PIN
+        // Kirim request 'action: get' tanpa PIN
         fetch(SCRIPT_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "get", pin: pin }),
+          body: JSON.stringify({ action: "get" }),
         })
           .then((response) => response.json())
           .then((response) => {
             loading.style.display = "none";
-            if (response.result === "error") {
-              alert(response.message); // Misal PIN salah
-              return;
-            }
             updateDOM(response.data);
           });
       }
@@ -309,7 +274,8 @@
 
         list.innerHTML = "";
 
-        // Hitung Saldo
+        if (!transactions) return;
+
         const amounts = transactions.map((t) => Number(t.amount));
         const total = amounts.reduce((acc, item) => (acc += item), 0);
         const income = amounts.filter((item) => item > 0).reduce((acc, item) => (acc += item), 0);
@@ -319,7 +285,6 @@
         money_plus.innerText = `+${formatRupiah(income)}`;
         money_minus.innerText = `-${formatRupiah(expense)}`;
 
-        // Tampilkan List (Balik urutan biar yang baru di atas)
         transactions
           .slice()
           .reverse()
