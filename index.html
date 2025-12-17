@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DompetKu - Catat Keuangan</title>
+    <title>DompetKu - Cloud Sync</title>
     <style>
       :root {
         --primary: #2563eb;
@@ -12,10 +12,9 @@
         --bg: #f3f4f6;
         --card: #ffffff;
       }
-
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background-color: var(--bg);
+        font-family: sans-serif;
+        background: var(--bg);
         margin: 0;
         padding: 20px;
         color: #333;
@@ -25,7 +24,22 @@
         margin: 0 auto;
       }
 
-      /* Header Cards */
+      /* Loading Overlay */
+      #loading {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        z-index: 99;
+        text-align: center;
+        padding-top: 200px;
+        font-weight: bold;
+      }
+
+      /* Kartu Saldo */
       .balance-card {
         background: var(--primary);
         color: white;
@@ -33,15 +47,9 @@
         border-radius: 12px;
         text-align: center;
         margin-bottom: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      }
-      .balance-card h2 {
-        margin: 0;
-        font-size: 14px;
-        opacity: 0.9;
       }
       .balance-card h1 {
-        margin: 10px 0 0;
+        margin: 10px 0;
         font-size: 32px;
       }
 
@@ -55,21 +63,19 @@
         background: var(--card);
         padding: 15px;
         border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       }
       .money-plus {
         color: var(--success);
         font-weight: bold;
-        font-size: 18px;
       }
       .money-minus {
         color: var(--danger);
         font-weight: bold;
-        font-size: 18px;
       }
 
-      /* Form */
+      /* Form Input */
       .input-group {
         background: var(--card);
         padding: 20px;
@@ -77,12 +83,11 @@
         margin-bottom: 20px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       }
-      h3 {
-        margin-top: 0;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
       }
-
       .form-control {
         width: 100%;
         padding: 10px;
@@ -91,6 +96,16 @@
         border-radius: 6px;
         box-sizing: border-box;
       }
+
+      /* PIN Input */
+      .pin-input {
+        border: 2px solid var(--primary);
+        background: #eef2ff;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-align: center;
+      }
+
       .btn {
         width: 100%;
         padding: 12px;
@@ -98,27 +113,16 @@
         border-radius: 6px;
         cursor: pointer;
         font-weight: bold;
-        font-size: 16px;
-        transition: 0.2s;
-      }
-      .btn-primary {
         background: var(--primary);
         color: white;
       }
-      .btn-primary:hover {
+      .btn:hover {
         background: #1d4ed8;
       }
-      .btn-danger {
-        background: #fee2e2;
-        color: var(--danger);
-        margin-top: 5px;
-        font-size: 12px;
-        padding: 8px;
-      }
 
-      /* Transaction List */
+      /* List Transaksi */
       .history-list {
-        list-style-type: none;
+        list-style: none;
         padding: 0;
       }
       .history-item {
@@ -129,8 +133,6 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        position: relative;
         border-left: 5px solid transparent;
       }
       .history-item.plus {
@@ -139,48 +141,28 @@
       .history-item.minus {
         border-left-color: var(--danger);
       }
-
-      .item-details {
-        flex-grow: 1;
-        margin-left: 10px;
+      .item-details small {
+        display: block;
+        color: #888;
+        margin-top: 4px;
       }
       .item-cat {
-        font-size: 12px;
-        color: #666;
         background: #eee;
         padding: 2px 6px;
         border-radius: 4px;
-      }
-      .delete-btn {
-        background: transparent;
-        border: none;
-        color: #999;
-        font-size: 20px;
-        cursor: pointer;
-        margin-left: 10px;
-      }
-      .delete-btn:hover {
-        color: var(--danger);
-      }
-
-      /* Tools */
-      .tools {
-        margin-top: 30px;
-        text-align: center;
-        font-size: 12px;
-      }
-      .tools button {
-        margin: 0 5px;
-        padding: 5px 10px;
-        cursor: pointer;
+        font-size: 11px;
+        margin-left: 5px;
       }
     </style>
   </head>
   <body>
+    <div id="loading">Sedang Sinkronisasi ke Google Sheet...</div>
+
     <div class="container">
       <div class="balance-card">
         <h2>Sisa Saldo</h2>
         <h1 id="balance">Rp 0</h1>
+        <small style="opacity: 0.8">Data tersimpan di Google Sheet</small>
       </div>
 
       <div class="summary-grid">
@@ -195,183 +177,172 @@
       </div>
 
       <div class="input-group">
-        <h3>Tambah Transaksi</h3>
+        <h3>Tambah Transaksi Baru</h3>
         <form id="form">
-          <select id="type" class="form-control">
-            <option value="expense">Pengeluaran (-)</option>
-            <option value="income">Pemasukan (+)</option>
-          </select>
+          <input type="password" id="pin" class="form-control pin-input" placeholder="Masukkan PIN Rahasia" required />
 
-          <input type="text" id="text" class="form-control" placeholder="Nama Transaksi (cth: Gaji, Kopi)" required />
+          <div class="form-row">
+            <input type="date" id="date" class="form-control" required />
+            <select id="type" class="form-control">
+              <option value="expense">Pengeluaran (-)</option>
+              <option value="income">Pemasukan (+)</option>
+            </select>
+          </div>
+
+          <input type="text" id="text" class="form-control" placeholder="Nama Transaksi (cth: Nasi Padang)" required />
 
           <input list="categories" id="category" class="form-control" placeholder="Kategori" required />
           <datalist id="categories">
             <option value="Gaji"></option>
             <option value="Bonus"></option>
             <option value="Side Hustle"></option>
-            <option value="Groceries"></option>
-            <option value="Utilities"></option>
-            <option value="Jajan"></option>
-            <option value="Kopi"></option>
+            <option value="Makan"></option>
             <option value="Transport"></option>
+            <option value="Utilities"></option>
+            <option value="Kopi"></option>
+            <option value="Belanja"></option>
+            <option value="Hobi"></option>
           </datalist>
 
           <input type="number" id="amount" class="form-control" placeholder="Jumlah (Rp)" required />
-          <button class="btn btn-primary">Tambah Transaksi</button>
+
+          <button class="btn">Simpan ke Cloud</button>
         </form>
       </div>
 
-      <h3>Riwayat</h3>
+      <h3>Riwayat Terakhir</h3>
       <ul id="list" class="history-list"></ul>
-
-      <div class="tools">
-        <p>Data tersimpan otomatis di browser ini.</p>
-        <button onclick="downloadData()">Download Backup (JSON)</button>
-        <button onclick="document.getElementById('file-input').click()">Restore Data</button>
-        <input type="file" id="file-input" style="display: none" onchange="loadData(this)" />
-      </div>
     </div>
 
     <script>
-      const balance = document.getElementById("balance");
-      const money_plus = document.getElementById("money-plus");
-      const money_minus = document.getElementById("money-minus");
-      const list = document.getElementById("list");
+      // --- GANTI URL INI DENGAN URL DEPLOYMENT GOOGLE SCRIPT KAMU ---
+      const SCRIPT_URL = "https://script.google.com/a/macros/student.uns.ac.id/s/AKfycbwkEam74ZMFuskgfq9nzEkn3imJfPRQpV38SleairvjbKO_W28iVkJ8tS8G8fdwQ2Ze7Q/exec";
+      // -------------------------------------------------------------
+
       const form = document.getElementById("form");
-      const text = document.getElementById("text");
-      const amount = document.getElementById("amount");
-      const type = document.getElementById("type");
-      const category = document.getElementById("category");
+      const loading = document.getElementById("loading");
 
-      // Mengambil data dari LocalStorage
-      const localStorageTransactions = JSON.parse(localStorage.getItem("transactions"));
-      let transactions = localStorage.getItem("transactions") !== null ? localStorageTransactions : [];
+      // Set default date ke hari ini
+      document.getElementById("date").valueAsDate = new Date();
 
-      // Fungsi menambah transaksi
-      function addTransaction(e) {
+      // Simpan PIN di browser biar ga ngetik ulang terus (Opsional)
+      const savedPin = localStorage.getItem("user_pin");
+      if (savedPin) document.getElementById("pin").value = savedPin;
+
+      // Load Data saat aplikasi dibuka
+      window.onload = function () {
+        if (savedPin) fetchData(savedPin);
+      };
+
+      form.addEventListener("submit", function (e) {
         e.preventDefault();
+        const pin = document.getElementById("pin").value;
+        localStorage.setItem("user_pin", pin); // Ingat PIN di browser
 
-        if (text.value.trim() === "" || amount.value.trim() === "") {
-          alert("Mohon isi nama dan jumlah uang");
-          return;
-        }
+        const type = document.getElementById("type").value;
+        const amountVal = document.getElementById("amount").value;
 
-        const transaction = {
-          id: generateID(),
-          text: text.value,
-          amount: type.value === "expense" ? -Math.abs(amount.value) : Math.abs(amount.value),
-          category: category.value,
-          date: new Date().toLocaleDateString("id-ID"),
+        // Data yang akan dikirim
+        const data = {
+          action: "add",
+          pin: pin,
+          id: new Date().getTime(),
+          date: document.getElementById("date").value,
+          type: type,
+          text: document.getElementById("text").value,
+          category: document.getElementById("category").value,
+          // Jika expense, jadikan negatif
+          amount: type === "expense" ? -Math.abs(amountVal) : Math.abs(amountVal),
         };
 
-        transactions.push(transaction);
-        addTransactionDOM(transaction);
-        updateValues();
-        updateLocalStorage();
+        sendData(data);
+      });
 
-        text.value = "";
-        amount.value = "";
-        category.value = "";
+      function sendData(data) {
+        loading.style.display = "block";
+
+        fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors", // Penting untuk Google Script
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+          .then(() => {
+            // Karena mode 'no-cors', kita tidak bisa baca respons JSON detail
+            // Jadi kita asumsikan berhasil, lalu refresh data
+            alert("Data terkirim! Sedang mengambil data terbaru...");
+            form.reset();
+            document.getElementById("date").valueAsDate = new Date();
+            document.getElementById("pin").value = localStorage.getItem("user_pin");
+            fetchData(data.pin); // Refresh tampilan
+          })
+          .catch((err) => {
+            alert("Error koneksi");
+            loading.style.display = "none";
+          });
       }
 
-      // Generate ID acak
-      function generateID() {
-        return Math.floor(Math.random() * 100000000);
+      function fetchData(pin) {
+        loading.style.display = "block";
+
+        // Trik fetch POST dengan action="get" agar body bisa bawa PIN
+        fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "get", pin: pin }),
+        })
+          .then((response) => response.json())
+          .then((response) => {
+            loading.style.display = "none";
+            if (response.result === "error") {
+              alert(response.message); // Misal PIN salah
+              return;
+            }
+            updateDOM(response.data);
+          });
       }
 
-      // Menambah transaksi ke DOM (Tampilan)
-      function addTransactionDOM(transaction) {
-        const sign = transaction.amount < 0 ? "-" : "+";
-        const item = document.createElement("li");
+      function updateDOM(transactions) {
+        const list = document.getElementById("list");
+        const balance = document.getElementById("balance");
+        const money_plus = document.getElementById("money-plus");
+        const money_minus = document.getElementById("money-minus");
 
-        item.classList.add("history-item");
-        item.classList.add(transaction.amount < 0 ? "minus" : "plus");
+        list.innerHTML = "";
 
-        item.innerHTML = `
-            <div>
-                <strong>${transaction.text}</strong> <span class="item-cat">${transaction.category}</span>
-                <br><small style="color:#888">${transaction.date}</small>
-            </div>
-            <span>${sign}${formatRupiah(Math.abs(transaction.amount))}</span>
-            <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>
-        `;
-
-        list.appendChild(item);
-      }
-
-      // Update total saldo, pemasukan, pengeluaran
-      function updateValues() {
-        const amounts = transactions.map((transaction) => transaction.amount);
-
+        // Hitung Saldo
+        const amounts = transactions.map((t) => Number(t.amount));
         const total = amounts.reduce((acc, item) => (acc += item), 0);
-
         const income = amounts.filter((item) => item > 0).reduce((acc, item) => (acc += item), 0);
-
         const expense = amounts.filter((item) => item < 0).reduce((acc, item) => (acc += item), 0) * -1;
 
-        balance.innerText = `${formatRupiah(total)}`;
+        balance.innerText = formatRupiah(total);
         money_plus.innerText = `+${formatRupiah(income)}`;
         money_minus.innerText = `-${formatRupiah(expense)}`;
+
+        // Tampilkan List (Balik urutan biar yang baru di atas)
+        transactions
+          .slice()
+          .reverse()
+          .forEach((t) => {
+            const sign = t.amount < 0 ? "-" : "+";
+            const item = document.createElement("li");
+            item.classList.add("history-item");
+            item.classList.add(t.amount < 0 ? "minus" : "plus");
+
+            item.innerHTML = `
+                <div class="item-details">
+                    <strong>${t.text}</strong> <span class="item-cat">${t.category}</span>
+                    <small>${t.date}</small>
+                </div>
+                <span>${sign}${formatRupiah(Math.abs(t.amount))}</span>
+            `;
+            list.appendChild(item);
+          });
       }
 
-      // Hapus transaksi
-      function removeTransaction(id) {
-        transactions = transactions.filter((transaction) => transaction.id !== id);
-        updateLocalStorage();
-        init();
-      }
-
-      // Update Local Storage
-      function updateLocalStorage() {
-        localStorage.setItem("transactions", JSON.stringify(transactions));
-      }
-
-      // Format Rupiah
       function formatRupiah(number) {
-        return new Intl.NumberFormat("id-ID", {
-          style: "currency",
-          currency: "IDR",
-          minimumFractionDigits: 0,
-        }).format(number);
+        return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(number);
       }
-
-      // Backup & Restore
-      function downloadData() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
-        const downloadAnchorNode = document.createElement("a");
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "keuangan_backup.json");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-      }
-
-      function loadData(input) {
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const content = e.target.result;
-          try {
-            transactions = JSON.parse(content);
-            updateLocalStorage();
-            init();
-            alert("Data berhasil dipulihkan!");
-          } catch (err) {
-            alert("File error, pastikan file JSON benar.");
-          }
-        };
-        reader.readAsText(file);
-      }
-
-      // Inisialisasi app
-      function init() {
-        list.innerHTML = "";
-        transactions.forEach(addTransactionDOM);
-        updateValues();
-      }
-
-      init();
-      form.addEventListener("submit", addTransaction);
     </script>
   </body>
 </html>
