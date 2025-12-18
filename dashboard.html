@@ -6,7 +6,6 @@
     <title>Dashboard Keuangan</title>
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
   </head>
   <body>
     <div id="loading">Sinkronisasi Data...</div>
@@ -17,74 +16,84 @@
         <a href="#" onclick="logout()" style="color: var(--danger); text-decoration: none; font-weight: bold">Logout</a>
       </div>
 
-      <div class="balance-card">
-        <h2>Sisa Saldo</h2>
-        <h1 id="balance">Rp 0</h1>
-      </div>
-
-      <div class="summary-grid">
-        <div class="card text-center">
-          <h4>Pemasukan</h4>
-          <p id="money-plus" class="money-plus">+Rp 0</p>
+      <div id="view-home" class="view-section active">
+        <div class="balance-card">
+          <h2>Sisa Saldo</h2>
+          <h1 id="balance">Rp 0</h1>
         </div>
-        <div class="card text-center">
-          <h4>Pengeluaran</h4>
-          <p id="money-minus" class="money-minus">-Rp 0</p>
-        </div>
-      </div>
 
-      <div class="card">
-        <h3 class="text-center" style="margin-top: 0">Analisa Pengeluaran</h3>
-        <div class="chart-wrapper">
-          <canvas id="expenseChart"></canvas>
-        </div>
-      </div>
-
-      <div class="input-group" id="input-card">
-        <h3 id="form-title">Tambah Transaksi</h3>
-        <form id="form">
-          <input type="hidden" id="edit-id" />
-
-          <div class="form-row">
-            <input type="date" id="date" class="form-control" required />
-            <select id="type" class="form-control">
-              <option value="expense">Pengeluaran (-)</option>
-              <option value="income">Pemasukan (+)</option>
-            </select>
+        <div class="summary-grid">
+          <div class="card text-center">
+            <h4>Pemasukan</h4>
+            <p id="money-plus" class="money-plus">+Rp 0</p>
           </div>
+          <div class="card text-center">
+            <h4>Pengeluaran</h4>
+            <p id="money-minus" class="money-minus">-Rp 0</p>
+          </div>
+        </div>
 
-          <input type="text" id="text" class="form-control" placeholder="Keterangan" required />
-          <input list="categories" id="category" class="form-control" placeholder="Kategori" required />
-          <datalist id="categories">
-            <option value="Gaji"></option>
-            <option value="Bonus"></option>
-            <option value="Makan"></option>
-            <option value="Belanja"></option>
-            <option value="Transport"></option>
-            <option value="Tagihan"></option>
-          </datalist>
+        <div class="input-group" id="input-card">
+          <h3 id="form-title">Tambah Transaksi</h3>
+          <form id="form">
+            <input type="hidden" id="edit-id" />
+            <div class="form-row">
+              <input type="date" id="date" class="form-control" required />
+              <select id="type" class="form-control">
+                <option value="expense">Pengeluaran (-)</option>
+                <option value="income">Pemasukan (+)</option>
+              </select>
+            </div>
+            <input type="text" id="text" class="form-control" placeholder="Keterangan" required />
+            <input list="categories" id="category" class="form-control" placeholder="Kategori" required />
+            <datalist id="categories">
+              <option value="Gaji"></option>
+              <option value="Bonus"></option>
+              <option value="Makan"></option>
+              <option value="Belanja"></option>
+              <option value="Transport"></option>
+              <option value="Tagihan"></option>
+            </datalist>
 
-          <input type="number" id="amount" class="form-control" placeholder="Jumlah (Rp)" required />
+            <input type="number" id="amount" class="form-control" placeholder="Jumlah (Rp)" required />
+            <button type="submit" id="submit-btn" class="btn">Simpan</button>
+            <button type="button" id="cancel-btn" class="btn btn-cancel" onclick="cancelEdit()">Batal Edit</button>
+          </form>
+        </div>
 
-          <button type="submit" id="submit-btn" class="btn">Simpan</button>
-          <button type="button" id="cancel-btn" class="btn btn-cancel" onclick="cancelEdit()">Batal Edit</button>
-        </form>
+        <h3>Riwayat Terakhir</h3>
+        <ul id="list" class="history-list"></ul>
       </div>
 
-      <h3>Riwayat Terakhir</h3>
-      <ul id="list" class="history-list"></ul>
+      <div id="view-chart" class="view-section">
+        <h3 class="text-center">Analisa Pengeluaran</h3>
+        <div class="chart-container">
+          <div class="chart-wrapper">
+            <canvas id="expenseChart"></canvas>
+          </div>
+          <p class="text-center" style="margin-top: 20px; font-size: 12px; color: #666">*Klik pada warna grafik untuk melihat detail kategori.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="switchTab('home')" id="nav-home">
+        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
+        <span>Transaksi</span>
+      </div>
+      <div class="nav-item" onclick="switchTab('chart')" id="nav-chart">
+        <svg viewBox="0 0 24 24"><path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2 0v11h10.99c-.18-5.7-4.9-10.45-10.99-10.45zm0 13v7c5.63-.55 10.1-5.02 10.65-10.65H13z" /></svg>
+        <span>Statistik</span>
+      </div>
     </div>
 
     <script>
-      // --- PASTE URL SCRIPT GOOGLE DI SINI ---
+      // --- MASUKKAN URL GOOGLE SCRIPT ---
       const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkEam74ZMFuskgfq9nzEkn3imJfPRQpV38SleairvjbKO_W28iVkJ8tS8G8fdwQ2Ze7Q/exec";
-      // ---------------------------------------
+      // ----------------------------------
 
-      // Proteksi: Jika belum login, tendang ke index.html
       const currentUser = localStorage.getItem("currentUser");
-      if (!currentUser) {
-        window.location.href = "index.html";
-      }
+      if (!currentUser) window.location.href = "index.html";
       document.getElementById("welcome-msg").innerText = "Halo, " + currentUser;
 
       let chartInstance = null;
@@ -98,6 +107,19 @@
       function logout() {
         localStorage.removeItem("currentUser");
         window.location.href = "index.html";
+      }
+
+      // --- FUNGSI GANTI TAB ---
+      function switchTab(tab) {
+        // Hapus class active dari semua view dan nav
+        document.getElementById("view-home").classList.remove("active");
+        document.getElementById("view-chart").classList.remove("active");
+        document.getElementById("nav-home").classList.remove("active");
+        document.getElementById("nav-chart").classList.remove("active");
+
+        // Tambah class active ke yang dipilih
+        document.getElementById("view-" + tab).classList.add("active");
+        document.getElementById("nav-" + tab).classList.add("active");
       }
 
       // --- FORM SUBMIT ---
@@ -154,7 +176,7 @@
           });
       }
 
-      // --- LOGIC CHART DENGAN PERSENTASE ---
+      // --- CHART LOGIC ---
       function updateChart(transactions) {
         const ctx = document.getElementById("expenseChart").getContext("2d");
         const categoryTotals = {};
@@ -173,7 +195,7 @@
         const data = Object.values(categoryTotals);
 
         if (chartInstance) chartInstance.destroy();
-        if (labels.length === 0) return;
+        if (labels.length === 0) return; // Jangan render kalau kosong
 
         chartInstance = new Chart(ctx, {
           type: "doughnut",
@@ -183,7 +205,8 @@
               {
                 data: data,
                 backgroundColor: ["#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899", "#6366f1"],
-                borderWidth: 1,
+                borderWidth: 2,
+                borderColor: "#ffffff",
               },
             ],
           },
@@ -191,7 +214,7 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 10 } } },
+              legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 }, padding: 20 } },
               tooltip: {
                 callbacks: {
                   label: function (context) {
@@ -206,7 +229,6 @@
         });
       }
 
-      // --- DOM UPDATES ---
       function updateDOM(transactions) {
         const list = document.getElementById("list");
         const balance = document.getElementById("balance");
@@ -254,12 +276,12 @@
           });
       }
 
-      // Helpers
       function formatRupiah(n) {
         return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
       }
 
       window.startEdit = function (id, date, text, category, amount) {
+        switchTab("home"); // Pastikan pindah ke tab Home kalau mau edit
         isEditing = true;
         document.getElementById("input-card").scrollIntoView({ behavior: "smooth" });
         document.getElementById("input-card").classList.add("editing");
