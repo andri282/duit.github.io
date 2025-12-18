@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DompetKu - Joint Account</title>
+    <title>DompetKu - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
       :root {
         --primary: #2563eb;
@@ -13,7 +15,7 @@
         --card: #ffffff;
       }
       body {
-        font-family: sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background: var(--bg);
         margin: 0;
         padding: 0;
@@ -59,6 +61,7 @@
         padding: 20px;
         max-width: 600px;
         margin: 0 auto;
+        padding-bottom: 80px;
       }
       #loading {
         display: none;
@@ -116,6 +119,22 @@
       .money-minus {
         color: var(--danger);
         font-weight: bold;
+      }
+
+      /* CHART CONTAINER */
+      .chart-section {
+        background: var(--card);
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .chart-wrapper {
+        position: relative;
+        height: 250px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
       }
 
       .input-group {
@@ -205,7 +224,6 @@
         background: var(--danger);
       }
 
-      /* Badge User */
       .user-badge {
         font-size: 10px;
         background: #e0e7ff;
@@ -221,7 +239,7 @@
     <div id="login-page">
       <div class="login-box">
         <h2>Dompet Bersama</h2>
-        <p>Masukkan PIN Kamu</p>
+        <p>Masukkan PIN</p>
         <form id="login-form">
           <input type="password" id="login-pin" placeholder="PIN" pattern="[0-9]*" inputmode="numeric" required />
           <button type="submit" class="btn">Masuk</button>
@@ -230,11 +248,11 @@
     </div>
 
     <div id="app-page">
-      <div id="loading">Memproses Data...</div>
+      <div id="loading">Sinkronisasi Data...</div>
 
       <div class="header-info">
         <span id="welcome-msg">Halo, User</span>
-        <a href="#" onclick="logout()" style="color: red; text-decoration: none">Logout</a>
+        <a href="#" onclick="logout()" style="color: var(--danger); text-decoration: none; font-weight: bold">Logout</a>
       </div>
 
       <div class="balance-card">
@@ -250,6 +268,13 @@
         <div class="card">
           <h4>Pengeluaran</h4>
           <p id="money-minus" class="money-minus">-Rp 0</p>
+        </div>
+      </div>
+
+      <div class="chart-section">
+        <h3 style="text-align: center; margin-top: 0">Analisa Pengeluaran</h3>
+        <div class="chart-wrapper">
+          <canvas id="expenseChart"></canvas>
         </div>
       </div>
 
@@ -291,12 +316,14 @@
       // --- GANTI URL INI ---
       const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkEam74ZMFuskgfq9nzEkn3imJfPRQpV38SleairvjbKO_W28iVkJ8tS8G8fdwQ2Ze7Q/exec";
 
-      // --- DATABASE USER & PIN (GANTI DI SINI) ---
+      // --- DATABASE USER ---
       const USER_DB = {
         1234: "Suami",
         5678: "Istri",
       };
-      // -------------------------------------------
+      // ----------------------
+
+      let chartInstance = null; // Variabel untuk menyimpan chart
 
       // Cek Login
       function checkLogin() {
@@ -312,14 +339,11 @@
       document.getElementById("login-form").addEventListener("submit", function (e) {
         e.preventDefault();
         const inputPin = document.getElementById("login-pin").value;
-
-        // Cek apakah PIN ada di database
         if (USER_DB[inputPin]) {
-          const userName = USER_DB[inputPin];
-          localStorage.setItem("currentUser", userName); // Simpan nama user
+          localStorage.setItem("currentUser", USER_DB[inputPin]);
           checkLogin();
         } else {
-          alert("PIN Tidak Terdaftar!");
+          alert("PIN Salah!");
           document.getElementById("login-pin").value = "";
         }
       });
@@ -339,11 +363,10 @@
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
-
         const type = document.getElementById("type").value;
         const amountVal = document.getElementById("amount").value;
         const editId = document.getElementById("edit-id").value;
-        const currentUser = localStorage.getItem("currentUser"); // Ambil user yg sedang login
+        const currentUser = localStorage.getItem("currentUser");
 
         const data = {
           action: isEditing ? "edit" : "add",
@@ -353,9 +376,8 @@
           text: document.getElementById("text").value,
           category: document.getElementById("category").value,
           amount: type === "expense" ? -Math.abs(amountVal) : Math.abs(amountVal),
-          user: currentUser, // Kirim nama user ke Google Sheet
+          user: currentUser,
         };
-
         sendData(data);
       });
 
@@ -390,9 +412,70 @@
           .then((res) => res.json())
           .then((res) => {
             loading.style.display = "none";
-            updateDOM(res.data);
+            if (res.result === "success") {
+              updateDOM(res.data);
+              updateChart(res.data); // UPDATE CHART SAAT DATA MASUK
+            }
           });
       }
+
+      // --- FUNGSI CHART BARU ---
+      function updateChart(transactions) {
+        const ctx = document.getElementById("expenseChart").getContext("2d");
+
+        // 1. Kelompokkan pengeluaran berdasarkan kategori
+        const categoryTotals = {};
+        transactions.forEach((t) => {
+          if (t.amount < 0) {
+            // Hanya ambil pengeluaran
+            const cat = t.category;
+            const amt = Math.abs(t.amount);
+            if (categoryTotals[cat]) {
+              categoryTotals[cat] += amt;
+            } else {
+              categoryTotals[cat] = amt;
+            }
+          }
+        });
+
+        const labels = Object.keys(categoryTotals);
+        const data = Object.values(categoryTotals);
+
+        // Hapus chart lama jika ada (biar gak numpuk)
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        // Kalau belum ada pengeluaran
+        if (labels.length === 0) return;
+
+        // Render Chart Baru
+        chartInstance = new Chart(ctx, {
+          type: "doughnut", // Tipe Chart: doughnut, pie, atau bar
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Pengeluaran",
+                data: data,
+                backgroundColor: ["#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899", "#6366f1"],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { boxWidth: 12, font: { size: 10 } },
+              },
+            },
+          },
+        });
+      }
+      // -------------------------
 
       window.startEdit = function (id, date, text, category, amount) {
         isEditing = true;
@@ -455,8 +538,6 @@
 
             const safeText = t.text.replace(/'/g, "\\'");
             const safeCat = t.category.replace(/'/g, "\\'");
-
-            // Tampilkan User jika ada datanya
             const userBadge = t.user ? `<span class="user-badge">${t.user}</span>` : "";
 
             item.innerHTML = `
