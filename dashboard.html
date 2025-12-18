@@ -66,12 +66,50 @@
       </div>
 
       <div id="view-chart" class="view-section">
-        <h3 class="text-center">Analisa Pengeluaran</h3>
-        <div class="chart-container">
+        <h3 class="text-center">Filter Statistik</h3>
+
+        <div class="filter-container">
+          <div class="filter-row">
+            <div>
+              <span class="filter-label">Dari Tanggal</span>
+              <input type="date" id="filter-start" class="filter-control" onchange="applyFilter()" />
+            </div>
+            <div>
+              <span class="filter-label">Sampai Tanggal</span>
+              <input type="date" id="filter-end" class="filter-control" onchange="applyFilter()" />
+            </div>
+          </div>
+          <div class="filter-row">
+            <div>
+              <span class="filter-label">Jenis</span>
+              <select id="filter-type" class="filter-control" onchange="applyFilter()">
+                <option value="all">Semua</option>
+                <option value="expense">Pengeluaran</option>
+                <option value="income">Pemasukan</option>
+              </select>
+            </div>
+            <div>
+              <span class="filter-label">Kategori</span>
+              <select id="filter-category" class="filter-control" onchange="applyFilter()">
+                <option value="all">Semua Kategori</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-reset" onclick="resetFilter()">Reset Filter</button>
+        </div>
+
+        <div class="chart-container" style="height: auto; min-height: 400px">
+          <h4 class="text-center" id="chart-title">Analisa Pengeluaran</h4>
           <div class="chart-wrapper">
             <canvas id="expenseChart"></canvas>
           </div>
-          <p class="text-center" style="margin-top: 20px; font-size: 12px; color: #666">*Klik pada warna grafik untuk melihat detail kategori.</p>
+
+          <div class="summary-grid" style="margin-top: 20px">
+            <div class="text-center">
+              <small>Total Filter</small>
+              <p id="filter-total" style="font-weight: bold; margin: 5px 0">Rp 0</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -97,11 +135,20 @@
       document.getElementById("welcome-msg").innerText = "Halo, " + currentUser;
 
       let chartInstance = null;
+      let allTransactions = []; // Menyimpan semua data mentah
       const form = document.getElementById("form");
       const loading = document.getElementById("loading");
       let isEditing = false;
 
+      // Set Default Date hari ini
       document.getElementById("date").valueAsDate = new Date();
+
+      // Set Filter Default (Awal bulan ini s/d Hari ini)
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      document.getElementById("filter-end").valueAsDate = today;
+      document.getElementById("filter-start").valueAsDate = firstDay;
+
       window.onload = fetchData;
 
       function logout() {
@@ -109,20 +156,16 @@
         window.location.href = "index.html";
       }
 
-      // --- FUNGSI GANTI TAB ---
       function switchTab(tab) {
-        // Hapus class active dari semua view dan nav
-        document.getElementById("view-home").classList.remove("active");
-        document.getElementById("view-chart").classList.remove("active");
-        document.getElementById("nav-home").classList.remove("active");
-        document.getElementById("nav-chart").classList.remove("active");
-
-        // Tambah class active ke yang dipilih
+        document.querySelectorAll(".view-section, .nav-item").forEach((el) => el.classList.remove("active"));
         document.getElementById("view-" + tab).classList.add("active");
         document.getElementById("nav-" + tab).classList.add("active");
+
+        // Jika pindah ke chart, jalankan filter ulang biar chart update
+        if (tab === "chart") applyFilter();
       }
 
-      // --- FORM SUBMIT ---
+      // --- DATA HANDLING ---
       form.addEventListener("submit", function (e) {
         e.preventDefault();
         const type = document.getElementById("type").value;
@@ -170,32 +213,106 @@
           .then((res) => {
             loading.style.display = "none";
             if (res.result === "success") {
-              updateDOM(res.data);
-              updateChart(res.data);
+              allTransactions = res.data; // Simpan data mentah ke variabel global
+              updateDOM(allTransactions); // Update List Transaksi
+              populateCategoryFilter(allTransactions); // Isi dropdown kategori
+              applyFilter(); // Jalankan filter chart
             }
           });
       }
 
-      // --- CHART LOGIC ---
+      // --- FILTER & CHART LOGIC ---
+      function populateCategoryFilter(data) {
+        const catSelect = document.getElementById("filter-category");
+        const currentVal = catSelect.value;
+        // Ambil kategori unik
+        const categories = [...new Set(data.map((item) => item.category))];
+
+        catSelect.innerHTML = '<option value="all">Semua Kategori</option>';
+        categories.sort().forEach((cat) => {
+          const option = document.createElement("option");
+          option.value = cat;
+          option.innerText = cat;
+          catSelect.appendChild(option);
+        });
+        catSelect.value = currentVal; // Balikin pilihan user jika ada
+      }
+
+      function applyFilter() {
+        const startDate = document.getElementById("filter-start").value;
+        const endDate = document.getElementById("filter-end").value;
+        const filterType = document.getElementById("filter-type").value;
+        const filterCat = document.getElementById("filter-category").value;
+
+        // Lakukan penyaringan data
+        const filteredData = allTransactions.filter((t) => {
+          const tDate = t.date.split("T")[0]; // Ambil YYYY-MM-DD
+          const isDateMatch = tDate >= startDate && tDate <= endDate;
+
+          // Logika Tipe (Expense/Income)
+          let isTypeMatch = true;
+          if (filterType === "expense") isTypeMatch = t.amount < 0;
+          if (filterType === "income") isTypeMatch = t.amount > 0;
+
+          const isCatMatch = filterCat === "all" || t.category === filterCat;
+
+          return isDateMatch && isTypeMatch && isCatMatch;
+        });
+
+        updateChart(filteredData);
+      }
+
+      function resetFilter() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        document.getElementById("filter-start").valueAsDate = firstDay;
+        document.getElementById("filter-end").valueAsDate = today;
+        document.getElementById("filter-type").value = "all";
+        document.getElementById("filter-category").value = "all";
+        applyFilter();
+      }
+
       function updateChart(transactions) {
         const ctx = document.getElementById("expenseChart").getContext("2d");
+        const filterType = document.getElementById("filter-type").value;
+
         const categoryTotals = {};
-        let totalExpense = 0;
+        let grandTotal = 0;
+
+        // Tentukan apa yang mau ditampilkan di chart
+        // Kalau filter "Income", tampilkan Income. Selain itu tampilkan Expense (default).
+        const showIncome = filterType === "income";
+        const chartTitle = showIncome ? "Analisa Pemasukan" : "Analisa Pengeluaran";
+        document.getElementById("chart-title").innerText = chartTitle;
 
         transactions.forEach((t) => {
-          if (t.amount < 0) {
+          const amt = Number(t.amount);
+          // Jika mode Income, ambil yg positif. Jika mode Expense/All, ambil yg negatif
+          if ((showIncome && amt > 0) || (!showIncome && amt < 0)) {
             const cat = t.category;
-            const amt = Math.abs(t.amount);
-            categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
-            totalExpense += amt;
+            const absAmt = Math.abs(amt);
+            categoryTotals[cat] = (categoryTotals[cat] || 0) + absAmt;
+            grandTotal += absAmt; // Total untuk chart
           }
         });
+
+        // Update Text Total Filter di bawah chart
+        // Hitung total bersih dari data yang difilter (Income - Expense)
+        const netTotal = transactions.reduce((acc, curr) => acc + Number(curr.amount), 0);
+        document.getElementById("filter-total").innerText = formatRupiah(netTotal);
+        // Beri warna hijau jika plus, merah jika minus
+        document.getElementById("filter-total").style.color = netTotal >= 0 ? "var(--success)" : "var(--danger)";
 
         const labels = Object.keys(categoryTotals);
         const data = Object.values(categoryTotals);
 
         if (chartInstance) chartInstance.destroy();
-        if (labels.length === 0) return; // Jangan render kalau kosong
+
+        if (labels.length === 0) {
+          // Tampilkan chart kosong atau pesan jika tidak ada data
+          return;
+        }
 
         chartInstance = new Chart(ctx, {
           type: "doughnut",
@@ -204,7 +321,7 @@
             datasets: [
               {
                 data: data,
-                backgroundColor: ["#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899", "#6366f1"],
+                backgroundColor: ["#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899", "#6366f1", "#14b8a6"],
                 borderWidth: 2,
                 borderColor: "#ffffff",
               },
@@ -214,12 +331,12 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 }, padding: 20 } },
+              legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 }, padding: 15 } },
               tooltip: {
                 callbacks: {
                   label: function (context) {
                     let value = context.raw;
-                    let percentage = ((value / totalExpense) * 100).toFixed(1) + "%";
+                    let percentage = ((value / grandTotal) * 100).toFixed(1) + "%";
                     return ` ${context.label}: ${formatRupiah(value)} (${percentage})`;
                   },
                 },
@@ -229,6 +346,7 @@
         });
       }
 
+      // --- DOM UPDATES ---
       function updateDOM(transactions) {
         const list = document.getElementById("list");
         const balance = document.getElementById("balance");
@@ -281,7 +399,7 @@
       }
 
       window.startEdit = function (id, date, text, category, amount) {
-        switchTab("home"); // Pastikan pindah ke tab Home kalau mau edit
+        switchTab("home");
         isEditing = true;
         document.getElementById("input-card").scrollIntoView({ behavior: "smooth" });
         document.getElementById("input-card").classList.add("editing");
